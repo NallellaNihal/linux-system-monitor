@@ -3,40 +3,109 @@
 <head>
     <title>Linux System Monitor</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Linux System Monitoring Dashboard</h1>
 
-    <div class="cards">
-        <div class="card">CPU: <span id="cpu">0</span>%</div>
-        <div class="card">Memory: <span id="memory">0</span>%</div>
-        <div class="card">Disk: <span id="disk">0</span>%</div>
-        <div class="card">Uptime: <span id="uptime">0</span> hrs</div>
-    </div>
+    <div class="dashboard">
+        <div class="left-panel">
+            <div class="cards">
+                <div class="card">CPU <span id="cpu">0</span>%</div>
+                <div class="card">Memory <span id="memory">0</span>%</div>
+                <div class="card">Disk <span id="disk">0</span>%</div>
+                <div class="card">Uptime <span id="uptime">0</span> hrs</div>
+            </div>
 
-    <h2>System Info</h2>
-    <div class="info">
-        <p>System: <span id="system"></span></p>
-        <p>Host: <span id="node"></span></p>
-        <p>Kernel: <span id="release"></span></p>
-        <p>Network Sent: <span id="sent"></span> MB</p>
-        <p>Network Received: <span id="recv"></span> MB</p>
-    </div>
+            <div class="chart-box">
+                <h2>CPU Usage</h2>
+                <canvas id="cpuChart"></canvas>
+            </div>
 
-    <h2>Top Processes</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>PID</th>
-                <th>Name</th>
-                <th>CPU %</th>
-                <th>Memory %</th>
-            </tr>
-        </thead>
-        <tbody id="processes"></tbody>
-    </table>
+            <div class="chart-box">
+                <h2>Memory Usage</h2>
+                <canvas id="memoryChart"></canvas>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="info-box">
+                <h2>System Info</h2>
+                <p><b>System:</b> <span id="system"></span></p>
+                <p><b>Host:</b> <span id="node"></span></p>
+                <p><b>Kernel:</b> <span id="release"></span></p>
+                <p><b>Sent:</b> <span id="sent"></span> MB</p>
+                <p><b>Received:</b> <span id="recv"></span> MB</p>
+            </div>
+
+            <div class="process-box">
+                <h2>Top Processes</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>Name</th>
+                            <th>CPU</th>
+                            <th>RAM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <script>
+        const cpuChart = new Chart(document.getElementById("cpuChart"), {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "CPU %",
+                    data: [],
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 100 } }
+            }
+        });
+
+        const memoryChart = new Chart(document.getElementById("memoryChart"), {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Memory %",
+                    data: [],
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 100 } }
+            }
+        });
+
+        function updateChart(chart, value) {
+            const time = new Date().toLocaleTimeString();
+
+            chart.data.labels.push(time);
+            chart.data.datasets[0].data.push(value);
+
+            if (chart.data.labels.length > 10) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            chart.update();
+        }
+
         async function loadStats() {
             const res = await fetch("/api/stats");
             const data = await res.json();
@@ -50,6 +119,9 @@
             document.getElementById("release").innerText = data.release;
             document.getElementById("sent").innerText = data.network_sent;
             document.getElementById("recv").innerText = data.network_recv;
+
+            updateChart(cpuChart, data.cpu);
+            updateChart(memoryChart, data.memory);
         }
 
         async function loadProcesses() {
@@ -64,8 +136,8 @@
                     <tr>
                         <td>${proc.pid}</td>
                         <td>${proc.name}</td>
-                        <td>${proc.cpu_percent}</td>
-                        <td>${proc.memory_percent.toFixed(2)}</td>
+                        <td>${proc.cpu_percent}%</td>
+                        <td>${proc.memory_percent.toFixed(1)}%</td>
                     </tr>
                 `;
             });
