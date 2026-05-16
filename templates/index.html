@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Linux System Monitor</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Linux System Monitoring Dashboard</h1>
+
+    <div class="cards">
+        <div class="card">CPU: <span id="cpu">0</span>%</div>
+        <div class="card">Memory: <span id="memory">0</span>%</div>
+        <div class="card">Disk: <span id="disk">0</span>%</div>
+        <div class="card">Uptime: <span id="uptime">0</span> hrs</div>
+    </div>
+
+    <h2>System Info</h2>
+    <div class="info">
+        <p>System: <span id="system"></span></p>
+        <p>Host: <span id="node"></span></p>
+        <p>Kernel: <span id="release"></span></p>
+        <p>Network Sent: <span id="sent"></span> MB</p>
+        <p>Network Received: <span id="recv"></span> MB</p>
+    </div>
+
+    <h2>Top Processes</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>PID</th>
+                <th>Name</th>
+                <th>CPU %</th>
+                <th>Memory %</th>
+            </tr>
+        </thead>
+        <tbody id="processes"></tbody>
+    </table>
+
+    <script>
+        async function loadStats() {
+            const res = await fetch("/api/stats");
+            const data = await res.json();
+
+            document.getElementById("cpu").innerText = data.cpu;
+            document.getElementById("memory").innerText = data.memory;
+            document.getElementById("disk").innerText = data.disk;
+            document.getElementById("uptime").innerText = data.uptime;
+            document.getElementById("system").innerText = data.system;
+            document.getElementById("node").innerText = data.node;
+            document.getElementById("release").innerText = data.release;
+            document.getElementById("sent").innerText = data.network_sent;
+            document.getElementById("recv").innerText = data.network_recv;
+        }
+
+        async function loadProcesses() {
+            const res = await fetch("/api/processes");
+            const data = await res.json();
+
+            const tbody = document.getElementById("processes");
+            tbody.innerHTML = "";
+
+            data.forEach(proc => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${proc.pid}</td>
+                        <td>${proc.name}</td>
+                        <td>${proc.cpu_percent}</td>
+                        <td>${proc.memory_percent.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        setInterval(() => {
+            loadStats();
+            loadProcesses();
+        }, 2000);
+
+        loadStats();
+        loadProcesses();
+    </script>
+</body>
+</html>
